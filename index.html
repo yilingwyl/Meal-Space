@@ -86,7 +86,8 @@
   .rename-input { border: 1px solid #4F7358; border-radius: 6px; padding: 3px 6px; font-size: 13px; width: 110px; outline: none; }
   .qty-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .qty-btn { background: #E6F0DE; border: none; border-radius: 5px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #3E5233; font-size: 13px; line-height: 1; }
-  .qty-text { font-size: 12px; min-width: 52px; text-align: center; color: #3E5233; }
+  .qty-text { font-size: 12px; min-width: 52px; text-align: center; color: #3E5233; cursor: pointer; border-bottom: 1px dashed #C7D9B8; }
+  .qty-edit-input { border: 1px solid #4F7358; border-radius: 6px; padding: 2px 4px; font-size: 12px; width: 56px; outline: none; text-align: center; }
   .add-form { display: flex; gap: 5px; margin-top: 8px; align-items: center; }
   .add-input { border: 1px solid #D8E6CE; border-radius: 6px; padding: 5px 7px; font-size: 12px; flex: 1; min-width: 0; }
   .confirm-add-btn { background: #4F7358; border: none; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; flex-shrink: 0; }
@@ -288,6 +289,8 @@ const state = {
 
   editingItem: null, // {cat, id}
   editingValue: "",
+  editingQty: null, // {cat, id}
+  editingQtyValue: "",
 
   importOpen: false,
   importText: "",
@@ -533,6 +536,23 @@ function saveRename(cat, id, value) {
   if (!trimmed) { render(); return; }
   const item = state.inventory[cat].find((i) => i.id === id);
   if (item) item.name = trimmed;
+  persistInventory();
+  render();
+}
+function startEditQty(cat, id) {
+  const item = state.inventory[cat].find((i) => i.id === id);
+  state.editingQty = { cat: cat, id: id };
+  state.editingQtyValue = item ? String(fmtQty(item.qty)) : "0";
+  render();
+  const input = document.getElementById("qty-edit-input");
+  if (input) { input.focus(); input.select(); }
+}
+function saveEditQty(cat, id, value) {
+  const raw = value != null ? value : state.editingQtyValue;
+  state.editingQty = null;
+  const num = parseFloat(raw);
+  const item = state.inventory[cat].find((i) => i.id === id);
+  if (item && !isNaN(num)) item.qty = Math.max(0, Math.round(num * 100) / 100);
   persistInventory();
   render();
 }
@@ -851,6 +871,13 @@ function renderInventory() {
              onkeydown="if(event.key==='Enter'){saveRename('${cat}','${item.id}', this.value);} if(event.key==='Escape'){state.editingItem=null; render();}"
              onblur="saveRename('${cat}','${item.id}', this.value)">`
         : `<span class="item-name" onclick="startRename('${cat}','${item.id}')">${esc(item.name)}</span>`;
+      const isEditingQty = state.editingQty && state.editingQty.cat === cat && state.editingQty.id === item.id;
+      const qtyHtml = isEditingQty
+        ? `<input id="qty-edit-input" class="qty-edit-input" type="number" step="any" inputmode="decimal" value="${esc(state.editingQtyValue)}"
+             oninput="state.editingQtyValue=this.value"
+             onkeydown="if(event.key==='Enter'){saveEditQty('${cat}','${item.id}', this.value);} if(event.key==='Escape'){state.editingQty=null; render();}"
+             onblur="saveEditQty('${cat}','${item.id}', this.value)"> ${esc(item.unit)}`
+        : `<span class="qty-text" onclick="startEditQty('${cat}','${item.id}')">${fmtQty(item.qty)} ${esc(item.unit)}</span>`;
       return `<div class="item-row" style="opacity:${item.qty <= 0 ? 0.4 : 1}">
         <div class="item-left">
           <span class="item-avatar">${itemEmoji(item.id)}</span>
@@ -858,7 +885,7 @@ function renderInventory() {
         </div>
         <div class="qty-controls">
           <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',-1)">−</button>
-          <span class="qty-text">${fmtQty(item.qty)} ${esc(item.unit)}</span>
+          ${qtyHtml}
           <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',1)">+</button>
         </div>
       </div>`;
