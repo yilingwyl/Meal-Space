@@ -306,7 +306,10 @@ const state = {
   manualName: "",
   manualRole: "protein",
   manualIngredients: [], // [{id, qty}]
-  manualIngPicker: ""
+  manualIngPicker: "",
+
+  editingRecipe: null, // {id, name, meals, role, time, note, ingredients:[{id,qty}]}
+  editRecipeIngPicker: ""
 };
 
 /* ============================== 工具函数 ============================== */
@@ -627,6 +630,70 @@ function saveManualDish() {
   render();
 }
 
+function openRecipeEdit(recipeId) {
+  const recipe = state.customRecipes.find((r) => r.id === recipeId);
+  if (!recipe) return;
+  state.editingRecipe = JSON.parse(JSON.stringify(recipe));
+  state.editRecipeIngPicker = "";
+  render();
+}
+function closeRecipeEdit() {
+  state.editingRecipe = null;
+  render();
+}
+function editRecipeToggleMeal(m) {
+  const meals = state.editingRecipe.meals;
+  const idx = meals.indexOf(m);
+  if (idx >= 0) meals.splice(idx, 1); else meals.push(m);
+  render();
+}
+function editRecipeSetRole(role) {
+  state.editingRecipe.role = role;
+  render();
+}
+function editRecipeUpdateQty(idx, qty) {
+  state.editingRecipe.ingredients[idx].qty = qty;
+}
+function editRecipeRemoveIng(idx) {
+  state.editingRecipe.ingredients.splice(idx, 1);
+  render();
+}
+function editRecipeAddIng(itemId) {
+  if (state.editingRecipe.ingredients.some((i) => i.id === itemId)) return;
+  state.editingRecipe.ingredients.push({ id: itemId, qty: 1 });
+  render();
+}
+function saveEditedRecipe() {
+  const draft = state.editingRecipe;
+  if (!draft.name.trim() || !draft.ingredients.length) { showToast("请填写菜名并保留至少一种食材"); return; }
+  draft.ingredients.forEach((ing) => { ing.qty = Number(ing.qty) || 0; });
+  const idx = state.customRecipes.findIndex((r) => r.id === draft.id);
+  if (idx >= 0) {
+    state.customRecipes[idx] = {
+      id: draft.id,
+      name: draft.name.trim(),
+      meals: draft.meals.length ? draft.meals : ["dinner"],
+      role: draft.role,
+      time: Number(draft.time) || 15,
+      note: draft.note || "",
+      ingredients: draft.ingredients,
+      isCustom: true
+    };
+    persistCustomRecipes();
+    showToast("菜谱已更新 ✓");
+  }
+  state.editingRecipe = null;
+  render();
+}
+function deleteEditedRecipe() {
+  const id = state.editingRecipe.id;
+  state.customRecipes = state.customRecipes.filter((r) => r.id !== id);
+  persistCustomRecipes();
+  state.editingRecipe = null;
+  showToast("菜谱已删除");
+  render();
+}
+
 function openImport() {
   state.importOpen = true;
   state.importText = "";
@@ -919,6 +986,7 @@ function renderBrowseModalInner() {
         </div>
         <p class="recipe-row-ing">${r.ingredients.map(ingredientLine).join(" · ")}</p>
       </div>
+      ${r.isCustom ? `<button class="icon-btn" onclick="openRecipeEdit('${r.id}')" title="编辑菜谱">✏️</button>` : ""}
       <button class="btn-cook-small" style="opacity:${available ? 1 : .4};cursor:${available ? 'pointer' : 'not-allowed'}" ${available ? `onclick="cookRecipe('${r.id}')"` : "disabled"}>做了</button>
     </div>`;
   }).join("");
@@ -1013,6 +1081,64 @@ function renderMealPickerModal() {
         <input class="search-input" id="picker-search-input" placeholder="搜索菜名…" value="${esc(state.pickerSearch)}">
         <div class="recipe-list scroll-body" id="picker-list">${renderPickerExistingInner()}</div>
       ` : manualBody}
+    </div>
+  </div>`;
+}
+
+function renderEditIngPickerInner() {
+  const filter = state.editRecipeIngPicker;
+  const existingIds = state.editingRecipe.ingredients.map((i) => i.id);
+  let html = "";
+  Object.keys(state.inventory).forEach((cat) => {
+    state.inventory[cat].filter((i) => i.name.includes(filter) && !existingIds.includes(i.id)).forEach((item) => {
+      html += `<button class="ing-chip" onclick="editRecipeAddIng('${item.id}')">＋ ${esc(item.name)}</button>`;
+    });
+  });
+  return html || `<span class="hint">没有更多可加的食材了</span>`;
+}
+
+function renderRecipeEditModal() {
+  if (!state.editingRecipe) return "";
+  const draft = state.editingRecipe;
+  const ingRows = draft.ingredients.map((ing, idx) => {
+    const it = findItem(ing.id);
+    return `<div class="draft-ing-row">
+      <span style="flex:1.4;font-size:12.5px">${esc(it ? it.name : ing.id)}</span>
+      <input class="add-input" style="width:60px" value="${esc(ing.qty)}" oninput="editRecipeUpdateQty(${idx}, this.value)">
+      <span style="font-size:11.5px;color:#8CA477;width:36px">${esc(it ? it.unit : "")}</span>
+      <button class="icon-btn" onclick="editRecipeRemoveIng(${idx})">🗑️</button>
+    </div>`;
+  }).join("");
+
+  return `<div class="modal-overlay" onclick="if(event.target===this){closeRecipeEdit();}">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h3 class="modal-title">编辑菜谱</h3><button class="icon-btn" onclick="closeRecipeEdit()">✕</button></div>
+      <div class="scroll-body">
+        <label class="form-label">菜名</label>
+        <input class="form-input" value="${esc(draft.name)}" oninput="state.editingRecipe.name=this.value">
+
+        <label class="form-label">适合的餐次</label>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          ${MEAL_ORDER.map((m) => `<button class="meal-toggle ${draft.meals.includes(m) ? 'active' : ''}" onclick="editRecipeToggleMeal('${m}')">${MEAL_META[m].label}</button>`).join("")}
+        </div>
+
+        <label class="form-label">分类</label>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          ${["protein", "veg", "multi", "staple"].map((role) => `<button class="meal-toggle ${draft.role === role ? 'active' : ''}" onclick="editRecipeSetRole('${role}')">${ROLE_LABELS[role]}</button>`).join("")}
+        </div>
+
+        <label class="form-label">食材（改数量、删掉不要的）</label>
+        ${ingRows || `<p class="empty-text" style="padding:8px 0">还没有食材</p>`}
+
+        <label class="form-label">加一种食材</label>
+        <input class="search-input" id="edit-ing-search" placeholder="搜索食材库…" value="${esc(state.editRecipeIngPicker)}">
+        <div class="ing-picker-grid" id="edit-ing-grid">${renderEditIngPickerInner()}</div>
+
+        <div class="card-actions" style="margin-top:12px">
+          <button class="btn-soft" style="background:#F3DCD8;color:#B23A2E" onclick="deleteEditedRecipe()">🗑️ 删除这道菜谱</button>
+          <button class="btn-cook" onclick="saveEditedRecipe()">✓ 保存修改</button>
+        </div>
+      </div>
     </div>
   </div>`;
 }
@@ -1135,6 +1261,7 @@ function render() {
     ${renderBrowseModal()}
     ${renderImportModal()}
     ${renderMealPickerModal()}
+    ${renderRecipeEditModal()}
 
     ${state.toastMsg ? `<div class="toast">${esc(state.toastMsg)}</div>` : ""}
   `;
@@ -1166,6 +1293,14 @@ function attachLiveSearchHandlers() {
       state.manualIngPicker = e.target.value;
       const grid = document.getElementById("manual-ing-grid");
       if (grid) grid.innerHTML = renderIngPickerInner();
+    });
+  }
+  const editIngInput = document.getElementById("edit-ing-search");
+  if (editIngInput) {
+    editIngInput.addEventListener("input", (e) => {
+      state.editRecipeIngPicker = e.target.value;
+      const grid = document.getElementById("edit-ing-grid");
+      if (grid) grid.innerHTML = renderEditIngPickerInner();
     });
   }
 }
