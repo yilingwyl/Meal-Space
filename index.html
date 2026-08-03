@@ -830,7 +830,8 @@ function saveManualDish() {
 }
 
 function xhsSearchUrl(name) {
-  return "https://www.xiaohongshu.com/search_result?keyword=" + encodeURIComponent(name);
+  // 小红书自己的搜索页对未登录用户经常直接显示"页面不见了"，改用搜索引擎里搜索小红书站内内容更稳定
+  return "https://www.google.com/search?q=" + encodeURIComponent(`${name} 做法 site:xiaohongshu.com`);
 }
 function getRecipeSteps(recipe) {
   if (recipe.steps && recipe.steps.length) return recipe.steps;
@@ -1549,7 +1550,7 @@ function renderRecipeDetailModal() {
         ${stepsHtml}
         <div class="card-actions" style="margin-top:12px">
           <button class="btn-soft" onclick="generateStepsForRecipe('${recipe.id}')" ${state.generatingSteps ? "disabled" : ""}>✨ ${state.generatingSteps ? "生成中…" : (steps ? "重新用 AI 生成" : "AI 帮我生成做法")}</button>
-          <a class="btn-soft" style="text-decoration:none;text-align:center" href="${xhsSearchUrl(recipe.name)}" target="_blank" rel="noopener">🔍 去小红书搜同名菜谱</a>
+          <a class="btn-soft" style="text-decoration:none;text-align:center" href="${xhsSearchUrl(recipe.name)}" target="_blank" rel="noopener">🔍 搜索小红书上的做法</a>
         </div>
       </div>
     </div>
