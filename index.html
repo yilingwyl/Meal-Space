@@ -86,6 +86,8 @@
   .rename-input { border: 1px solid #4F7358; border-radius: 6px; padding: 3px 6px; font-size: 13px; width: 110px; outline: none; }
   .qty-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .qty-btn { background: #E6F0DE; border: none; border-radius: 5px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #3E5233; font-size: 13px; line-height: 1; }
+  .qty-btn.del-btn { font-size: 10px; opacity: .55; }
+  .qty-btn.del-btn:hover { opacity: 1; background: #F3DCD8; }
   .qty-text { font-size: 12px; min-width: 52px; text-align: center; color: #3E5233; cursor: pointer; border-bottom: 1px dashed #C7D9B8; }
   .qty-edit-input { border: 1px solid #4F7358; border-radius: 6px; padding: 2px 4px; font-size: 12px; width: 56px; outline: none; text-align: center; }
   .add-form { display: flex; gap: 5px; margin-top: 8px; align-items: center; }
@@ -511,6 +513,25 @@ function adjustQty(cat, id, delta) {
   persistInventory();
   render();
 }
+function deleteInventoryItem(cat, id) {
+  const item = state.inventory[cat].find((i) => i.id === id);
+  if (!item) return;
+  const usedIn = allRecipes().filter((r) => r.ingredients.some((ing) => ing.id === id)).map((r) => r.name);
+  const warn = usedIn.length ? `\n\n注意：${usedIn.join("、")} 这几道菜谱里用到了它，删除后这些菜会一直显示缺货。` : "";
+  if (!confirm(`确定要删除「${item.name}」吗？${warn}`)) return;
+  state.inventory[cat] = state.inventory[cat].filter((i) => i.id !== id);
+  persistInventory();
+  // 同时清理自定义菜谱里对这个食材的引用，避免残留
+  let recipesTouched = false;
+  state.customRecipes.forEach((r) => {
+    const before = r.ingredients.length;
+    r.ingredients = r.ingredients.filter((ing) => ing.id !== id);
+    if (r.ingredients.length !== before) recipesTouched = true;
+  });
+  if (recipesTouched) persistCustomRecipes();
+  showToast(`已删除「${item.name}」`);
+  render();
+}
 function toggleAddForm(cat) {
   state.addingTo = state.addingTo === cat ? null : cat;
   state.newItem = { name: "", qty: "", unit: "" };
@@ -727,6 +748,9 @@ function findMatchByName(name) {
   }
   return null;
 }
+function isCondimentName(name) {
+  return CONDIMENTS.some((c) => c === name || c.includes(name) || name.includes(c));
+}
 async function parseImport() {
   if (!state.importText.trim() && !state.importImage) {
     state.parseError = "请粘贴文字，或上传一张截图";
@@ -779,11 +803,13 @@ JSON 格式：
 
     const ingredientDrafts = (parsed.ingredients || []).map((ing) => {
       const matched = findMatchByName(ing.name);
+      const isCondiment = !matched && isCondimentName(ing.name);
       return {
         rawName: ing.name,
         qty: ing.qty != null ? ing.qty : 1,
         unit: ing.unit || "个",
         matchedId: matched ? matched.id : null,
+        isCondiment: isCondiment,
         newCategory: "蔬菜",
         currentStock: 0
       };
@@ -823,7 +849,12 @@ function removeDraftIngredient(idx) {
   render();
 }
 function addDraftIngredient() {
-  state.draftRecipe.ingredients.push({ rawName: "", qty: 1, unit: "个", matchedId: null, newCategory: "蔬菜", currentStock: 0 });
+  state.draftRecipe.ingredients.push({ rawName: "", qty: 1, unit: "个", matchedId: null, isCondiment: false, newCategory: "蔬菜", currentStock: 0 });
+  render();
+}
+function toggleDraftCondiment(idx) {
+  const ing = state.draftRecipe.ingredients[idx];
+  ing.isCondiment = !ing.isCondiment;
   render();
 }
 function saveDraftRecipe() {
@@ -831,6 +862,9 @@ function saveDraftRecipe() {
   if (!draft.name.trim() || !draft.ingredients.length) { showToast("请填写菜名和至少一种食材"); return; }
   const finalIngredients = [];
   draft.ingredients.forEach((ing) => {
+    if (ing.isCondiment) {
+      return; // 常备调料默认充足，不进库存也不进食材清单
+    }
     if (ing.matchedId) {
       finalIngredients.push({ id: ing.matchedId, qty: Number(ing.qty) || 0 });
     } else if (ing.rawName.trim()) {
@@ -954,6 +988,7 @@ function renderInventory() {
           <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',-1)">−</button>
           ${qtyHtml}
           <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',1)">+</button>
+          <button class="qty-btn del-btn" onclick="deleteInventoryItem('${cat}','${item.id}')" title="删除这个食材">🗑️</button>
         </div>
       </div>`;
     }).join("");
@@ -1170,13 +1205,16 @@ function renderImportModal() {
         <input class="add-input" style="flex:1.4" placeholder="食材名" value="${esc(ing.rawName)}" oninput="updateDraftIngredient(${idx}, {rawName:this.value, matchedId:null})">
         <input class="add-input" style="width:46px" value="${esc(ing.qty)}" oninput="updateDraftIngredient(${idx}, {qty:this.value})">
         <input class="add-input" style="width:46px" value="${esc(ing.unit)}" oninput="updateDraftIngredient(${idx}, {unit:this.value})">
-        ${ing.matchedId ? `<span class="matched-tag">已匹配库存</span>` : `
+        ${ing.matchedId ? `<span class="matched-tag">已匹配库存</span>` : ing.isCondiment ? `
+          <span class="matched-tag" style="background:#E6F0DE;color:#5D7A4C;cursor:pointer" onclick="toggleDraftCondiment(${idx})" title="点击改为需要入库的食材">常备调料·不入库</span>
+        ` : `
           <select class="category-select" onchange="updateDraftIngredient(${idx}, {newCategory:this.value})">
             <option value="蔬菜" ${ing.newCategory === '蔬菜' ? 'selected' : ''}>蔬菜</option>
             <option value="肉类" ${ing.newCategory === '肉类' ? 'selected' : ''}>肉类</option>
             <option value="点心" ${ing.newCategory === '点心' ? 'selected' : ''}>点心</option>
           </select>
           <input class="add-input" style="width:44px" placeholder="现有量" value="${esc(ing.currentStock)}" oninput="updateDraftIngredient(${idx}, {currentStock:this.value})">
+          <button class="icon-btn" style="font-size:10px" onclick="toggleDraftCondiment(${idx})" title="这其实是常备调料，不用入库">调料?</button>
         `}
         <button class="icon-btn" onclick="removeDraftIngredient(${idx})">🗑️</button>
       </div>`).join("");
