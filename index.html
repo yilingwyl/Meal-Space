@@ -4,7 +4,7 @@
 <link rel="apple-touch-icon" href="logo.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>今日厨房</title>
+<title>一日三餐</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
   * { box-sizing: border-box; }
@@ -31,6 +31,13 @@
   .btn-ghost { display: flex; align-items: center; gap: 6px; background: #E6F0DE; color: #3E5233; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
 
   .day-tab-bar { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px; }
+  .week-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .week-nav-btn { background: #E6F0DE; border: none; border-radius: 8px; padding: 7px 12px; font-size: 12.5px; color: #3E5233; cursor: pointer; white-space: nowrap; }
+  .week-nav-btn:hover { background: #D8E6CE; }
+  .week-nav-today { background: #233420; color: #EFF6E9; }
+  .week-nav-label { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+  .week-nav-tag { font-family: 'Noto Serif SC', serif; font-weight: 700; font-size: 14.5px; color: #233420; white-space: nowrap; }
+  .week-nav-range { font-size: 12px; color: #8CA477; white-space: nowrap; }
   .day-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 52px; padding: 8px 4px; border-radius: 10px; border: 1px solid #D8E6CE; background: #fff; cursor: pointer; position: relative; color: #3E5233; }
   .day-tab:hover { background: #E6F0DE; }
   .day-tab.active { background: #233420; color: #EFF6E9; border-color: #233420; }
@@ -42,6 +49,21 @@
   .section { margin-bottom: 30px; }
   .section-title { font-family: 'Noto Serif SC', serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; border-left: 4px solid #B23A2E; padding-left: 10px; }
   .hint { font-family: 'Noto Sans SC', sans-serif; font-weight: 400; font-size: 11.5px; color: #8CA477; }
+
+  .layout { display: flex; gap: 20px; align-items: flex-start; }
+  .sidebar { display: flex; flex-direction: column; gap: 6px; min-width: 160px; flex-shrink: 0; position: sticky; top: 20px; }
+  .sidebar-btn { display: flex; align-items: center; gap: 9px; background: #fff; border: 1px solid #D8E6CE; border-radius: 10px; padding: 11px 14px; font-size: 13.5px; color: #3E5233; cursor: pointer; text-align: left; font-weight: 500; }
+  .sidebar-btn:hover { background: #E6F0DE; }
+  .sidebar-btn.active { background: #233420; color: #EFF6E9; border-color: #233420; }
+  .content-area { flex: 1; min-width: 0; }
+  .inv-card-wide { max-width: 480px; }
+
+  @media (max-width: 700px) {
+    .layout { flex-direction: column; gap: 12px; }
+    .sidebar { flex-direction: row; overflow-x: auto; position: static; width: 100%; min-width: 0; padding-bottom: 2px; }
+    .sidebar-btn { flex-shrink: 0; white-space: nowrap; }
+    .inv-card-wide { max-width: none; }
+  }
 
   .meal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
   .meal-card { background: #fff; border: 1px solid #D8E6CE; border-radius: 14px; padding: 16px; box-shadow: 0 2px 6px rgba(30,45,26,0.04); }
@@ -278,6 +300,7 @@ const state = {
   weekPlan: null,
   weekKey: "",
   weekDates: [],
+  weekOffset: 0,
   todayIdx: 0,
   selectedDay: 0,
   toastMsg: null,
@@ -311,7 +334,10 @@ const state = {
   manualIngPicker: "",
 
   editingRecipe: null, // {id, name, meals, role, time, note, ingredients:[{id,qty}]}
-  editRecipeIngPicker: ""
+  editRecipeIngPicker: "",
+
+  activeTab: "menu", // menu | inventory | condiments
+  invTab: "蔬菜"
 };
 
 /* ============================== 工具函数 ============================== */
@@ -345,12 +371,13 @@ function pickDistinct(pool, n) {
   const shuffled = pool.slice().sort(() => Math.random() - 0.5);
   return shuffled.slice(0, n).map((r) => r.id);
 }
-function getWeekDates() {
+function getWeekDates(offset) {
+  offset = offset || 0;
   const now = new Date();
   const dow = now.getDay();
   const diffToMonday = dow === 0 ? -6 : 1 - dow;
   const monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMonday);
+  monday.setDate(now.getDate() + diffToMonday + offset * 7);
   monday.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
@@ -406,11 +433,40 @@ function persistInventory() {
 function persistCustomRecipes() {
   try { localStorage.setItem("custom-recipes", JSON.stringify(state.customRecipes)); } catch (e) {}
 }
+function loadAllWeekPlans() {
+  try {
+    const raw = localStorage.getItem("week-plans");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
 function persistWeekPlan() {
-  try { localStorage.setItem("week-plan", JSON.stringify({ key: state.weekKey, plan: state.weekPlan })); } catch (e) {}
+  try {
+    const all = loadAllWeekPlans();
+    all[state.weekKey] = state.weekPlan;
+    localStorage.setItem("week-plans", JSON.stringify(all));
+  } catch (e) {}
 }
 function persistApiKey() {
   try { localStorage.setItem("anthropic-api-key", state.apiKey || ""); } catch (e) {}
+}
+
+function generateWeekPlan(weekKey, weekDates) {
+  const all = loadAllWeekPlans();
+  let plan = all[weekKey];
+  if (!plan) {
+    plan = weekDates.map((d) => emptyDayPlan([0, 6].includes(d.getDay())));
+  }
+  plan = plan.map((day) => {
+    const next = Object.assign({}, day);
+    MEAL_ORDER.forEach((meal) => {
+      const slot = next[meal];
+      if (slot.status === "recommend" && slot.dishIds.length === 0) {
+        next[meal] = { status: "recommend", dishIds: generateDishes(meal) };
+      }
+    });
+    return next;
+  });
+  return plan;
 }
 
 function loadAll() {
@@ -428,37 +484,49 @@ function loadAll() {
     state.apiKey = localStorage.getItem("anthropic-api-key") || "";
   } catch (e) { state.apiKey = ""; }
 
-  state.weekDates = getWeekDates();
+  // 从旧版单周存储迁移到多周存储（如果存在旧数据且新存储里还没有对应的周）
+  try {
+    const oldWp = localStorage.getItem("week-plan");
+    if (oldWp) {
+      const parsedOld = JSON.parse(oldWp);
+      if (parsedOld && parsedOld.key && parsedOld.plan) {
+        const all = loadAllWeekPlans();
+        if (!all[parsedOld.key]) {
+          all[parsedOld.key] = parsedOld.plan;
+          localStorage.setItem("week-plans", JSON.stringify(all));
+        }
+      }
+      localStorage.removeItem("week-plan");
+    }
+  } catch (e) {}
+
+  state.weekOffset = 0;
+  state.weekDates = getWeekDates(0);
   state.weekKey = dateKey(state.weekDates[0]);
   const todayStr = dateKey(new Date());
   let idx = state.weekDates.findIndex((d) => dateKey(d) === todayStr);
   state.todayIdx = idx >= 0 ? idx : 0;
   state.selectedDay = state.todayIdx;
 
-  let plan = null;
-  try {
-    const wp = localStorage.getItem("week-plan");
-    if (wp) {
-      const parsed = JSON.parse(wp);
-      if (parsed.key === state.weekKey) plan = parsed.plan;
-    }
-  } catch (e) {}
-  if (!plan) {
-    plan = state.weekDates.map((d) => emptyDayPlan([0, 6].includes(d.getDay())));
-  }
-  plan = plan.map((day) => {
-    const next = Object.assign({}, day);
-    MEAL_ORDER.forEach((meal) => {
-      const slot = next[meal];
-      if (slot.status === "recommend" && slot.dishIds.length === 0) {
-        next[meal] = { status: "recommend", dishIds: generateDishes(meal) };
-      }
-    });
-    return next;
-  });
-  state.weekPlan = plan;
+  state.weekPlan = generateWeekPlan(state.weekKey, state.weekDates);
   persistWeekPlan();
 }
+
+function goToWeek(offset) {
+  state.weekOffset = offset;
+  state.weekDates = getWeekDates(offset);
+  state.weekKey = dateKey(state.weekDates[0]);
+  state.weekPlan = generateWeekPlan(state.weekKey, state.weekDates);
+  persistWeekPlan();
+  const todayStr = dateKey(new Date());
+  const idx = state.weekDates.findIndex((d) => dateKey(d) === todayStr);
+  state.todayIdx = idx; // -1 when viewing a week that isn't the current one
+  state.selectedDay = idx >= 0 ? idx : 0;
+  render();
+}
+function prevWeek() { goToWeek(state.weekOffset - 1); }
+function nextWeek() { goToWeek(state.weekOffset + 1); }
+function goToCurrentWeek() { goToWeek(0); }
 
 /* ============================== 业务逻辑 ============================== */
 
@@ -961,50 +1029,67 @@ function renderMealCard(dayIdx, meal) {
   </div>`;
 }
 
-function renderInventory() {
-  return Object.keys(state.inventory).map((cat) => {
-    const items = state.inventory[cat];
-    const rows = items.map((item) => {
-      const isEditing = state.editingItem && state.editingItem.cat === cat && state.editingItem.id === item.id;
-      const nameHtml = isEditing
-        ? `<input id="rename-input" class="rename-input" value="${esc(state.editingValue)}"
-             oninput="state.editingValue=this.value"
-             onkeydown="if(event.key==='Enter'){saveRename('${cat}','${item.id}', this.value);} if(event.key==='Escape'){state.editingItem=null; render();}"
-             onblur="saveRename('${cat}','${item.id}', this.value)">`
-        : `<span class="item-name" onclick="startRename('${cat}','${item.id}')">${esc(item.name)}</span>`;
-      const isEditingQty = state.editingQty && state.editingQty.cat === cat && state.editingQty.id === item.id;
-      const qtyHtml = isEditingQty
-        ? `<input id="qty-edit-input" class="qty-edit-input" type="number" step="any" inputmode="decimal" value="${esc(state.editingQtyValue)}"
-             oninput="state.editingQtyValue=this.value"
-             onkeydown="if(event.key==='Enter'){saveEditQty('${cat}','${item.id}', this.value);} if(event.key==='Escape'){state.editingQty=null; render();}"
-             onblur="saveEditQty('${cat}','${item.id}', this.value)"> ${esc(item.unit)}`
-        : `<span class="qty-text" onclick="startEditQty('${cat}','${item.id}')">${fmtQty(item.qty)} ${esc(item.unit)}</span>`;
-      return `<div class="item-row" style="opacity:${item.qty <= 0 ? 0.4 : 1}">
-        <div class="item-left">
-          <span class="item-avatar">${itemEmoji(item.id)}</span>
-          ${nameHtml}
-        </div>
-        <div class="qty-controls">
-          <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',-1)">−</button>
-          ${qtyHtml}
-          <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',1)">+</button>
-          <button class="qty-btn del-btn" onclick="deleteInventoryItem('${cat}','${item.id}')" title="删除这个食材">🗑️</button>
-        </div>
-      </div>`;
-    }).join("");
-    const addForm = state.addingTo === cat ? `
-      <div class="add-form">
-        <input class="add-input" placeholder="名称" value="${esc(state.newItem.name)}" oninput="state.newItem.name=this.value">
-        <input class="add-input" style="width:50px" placeholder="量" value="${esc(state.newItem.qty)}" oninput="state.newItem.qty=this.value">
-        <input class="add-input" style="width:50px" placeholder="单位" value="${esc(state.newItem.unit)}" oninput="state.newItem.unit=this.value">
-        <button class="confirm-add-btn" onclick="confirmAddItem('${cat}')">✓</button>
-      </div>` : "";
-    return `<div class="inv-card">
-      <div class="inv-card-header"><span>${esc(cat)}</span><button class="add-btn" onclick="toggleAddForm('${cat}')">+</button></div>
-      ${rows}
-      ${addForm}
+function renderInventoryCard(cat) {
+  const items = state.inventory[cat];
+  const rows = items.map((item) => {
+    const isEditing = state.editingItem && state.editingItem.cat === cat && state.editingItem.id === item.id;
+    const nameHtml = isEditing
+      ? `<input id="rename-input" class="rename-input" value="${esc(state.editingValue)}"
+           oninput="state.editingValue=this.value"
+           onkeydown="if(event.key==='Enter'){saveRename('${cat}','${item.id}', this.value);} if(event.key==='Escape'){state.editingItem=null; render();}"
+           onblur="saveRename('${cat}','${item.id}', this.value)">`
+      : `<span class="item-name" onclick="startRename('${cat}','${item.id}')">${esc(item.name)}</span>`;
+    const isEditingQty = state.editingQty && state.editingQty.cat === cat && state.editingQty.id === item.id;
+    const qtyHtml = isEditingQty
+      ? `<input id="qty-edit-input" class="qty-edit-input" type="number" step="any" inputmode="decimal" value="${esc(state.editingQtyValue)}"
+           oninput="state.editingQtyValue=this.value"
+           onkeydown="if(event.key==='Enter'){saveEditQty('${cat}','${item.id}', this.value);} if(event.key==='Escape'){state.editingQty=null; render();}"
+           onblur="saveEditQty('${cat}','${item.id}', this.value)"> ${esc(item.unit)}`
+      : `<span class="qty-text" onclick="startEditQty('${cat}','${item.id}')">${fmtQty(item.qty)} ${esc(item.unit)}</span>`;
+    return `<div class="item-row" style="opacity:${item.qty <= 0 ? 0.4 : 1}">
+      <div class="item-left">
+        <span class="item-avatar">${itemEmoji(item.id)}</span>
+        ${nameHtml}
+      </div>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',-1)">−</button>
+        ${qtyHtml}
+        <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',1)">+</button>
+        <button class="qty-btn del-btn" onclick="deleteInventoryItem('${cat}','${item.id}')" title="删除这个食材">🗑️</button>
+      </div>
     </div>`;
   }).join("");
+  const addForm = state.addingTo === cat ? `
+    <div class="add-form">
+      <input class="add-input" placeholder="名称" value="${esc(state.newItem.name)}" oninput="state.newItem.name=this.value">
+      <input class="add-input" style="width:50px" placeholder="量" value="${esc(state.newItem.qty)}" oninput="state.newItem.qty=this.value">
+      <input class="add-input" style="width:50px" placeholder="单位" value="${esc(state.newItem.unit)}" oninput="state.newItem.unit=this.value">
+      <button class="confirm-add-btn" onclick="confirmAddItem('${cat}')">✓</button>
+    </div>` : "";
+  return `<div class="inv-card inv-card-wide">
+    <div class="inv-card-header"><span>${esc(cat)}</span><button class="add-btn" onclick="toggleAddForm('${cat}')">+</button></div>
+    ${rows}
+    ${addForm}
+  </div>`;
+}
+
+function setActiveTab(tab) {
+  state.activeTab = tab;
+  render();
+}
+function setInvTab(cat) {
+  state.invTab = cat;
+  state.addingTo = null;
+  render();
+}
+
+function renderInventoryTab() {
+  const cats = Object.keys(state.inventory);
+  const subTabs = cats.map((cat) => `<button class="status-btn ${state.invTab === cat ? 'active' : ''}" onclick="setInvTab('${cat}')">${esc(cat)}</button>`).join("");
+  return `
+    <div class="status-row" style="max-width:420px;margin-bottom:16px">${subTabs}</div>
+    ${renderInventoryCard(state.invTab)}
+  `;
 }
 
 function renderBrowseModalInner() {
@@ -1265,12 +1350,39 @@ function render() {
 
   const mealCards = MEAL_ORDER.map((meal) => renderMealCard(state.selectedDay, meal)).join("");
 
+  const weekRangeLabel = `${state.weekDates[0].getMonth() + 1}月${state.weekDates[0].getDate()}日 - ${state.weekDates[6].getMonth() + 1}月${state.weekDates[6].getDate()}日`;
+  const weekOffsetLabel = state.weekOffset === 0 ? "本周" : state.weekOffset === 1 ? "下周" : state.weekOffset === -1 ? "上周" : (state.weekOffset > 0 ? `未来第 ${state.weekOffset} 周` : `之前第 ${-state.weekOffset} 周`);
+
+  const menuTabHtml = `
+    <div class="week-nav">
+      <button class="week-nav-btn" onclick="prevWeek()">‹ 上一周</button>
+      <div class="week-nav-label">
+        <span class="week-nav-tag">${weekOffsetLabel}</span>
+        <span class="week-nav-range">${weekRangeLabel}</span>
+      </div>
+      <button class="week-nav-btn" onclick="nextWeek()">下一周 ›</button>
+      ${state.weekOffset !== 0 ? `<button class="week-nav-btn week-nav-today" onclick="goToCurrentWeek()">回到本周</button>` : ""}
+    </div>
+    <div class="day-tab-bar">${dayTabs}</div>
+    <div class="meal-grid">${mealCards}</div>
+  `;
+  const inventoryTabHtml = renderInventoryTab();
+  const condimentsTabHtml = `
+    <p class="hint" style="display:block;margin-bottom:12px">默认充足，不计数</p>
+    <div class="condiment-wrap">${CONDIMENTS.map((c) => `<span class="condiment-tag">${esc(c)}</span>`).join("")}</div>
+  `;
+
+  const tabContent = state.activeTab === "menu" ? menuTabHtml : state.activeTab === "inventory" ? inventoryTabHtml : condimentsTabHtml;
+
+  const sidebarBtn = (tab, icon, label) =>
+    `<button class="sidebar-btn ${state.activeTab === tab ? 'active' : ''}" onclick="setActiveTab('${tab}')"><span>${icon}</span><span>${label}</span></button>`;
+
   const html = `
     <header class="header">
       <div class="header-left">
         <div class="seal-icon">🍳</div>
         <div>
-          <h1 class="title">今日厨房</h1>
+          <h1 class="title">一日三餐</h1>
           <p class="subtitle">${dateLabel} · ${WEEKDAY_LABELS[state.selectedDay]}${isWeekendDay ? '（周末）' : ''}</p>
         </div>
       </div>
@@ -1280,21 +1392,14 @@ function render() {
       </div>
     </header>
 
-    <div class="day-tab-bar">${dayTabs}</div>
-
-    <section class="section">
-      <div class="meal-grid">${mealCards}</div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">食材库存</h2>
-      <div class="inv-grid">${renderInventory()}</div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">常备调料 <span class="hint">（默认充足，不计数）</span></h2>
-      <div class="condiment-wrap">${CONDIMENTS.map((c) => `<span class="condiment-tag">${esc(c)}</span>`).join("")}</div>
-    </section>
+    <div class="layout">
+      <nav class="sidebar">
+        ${sidebarBtn("menu", "🍽️", "食谱推荐")}
+        ${sidebarBtn("inventory", "🧺", "食材库存")}
+        ${sidebarBtn("condiments", "🧂", "常备调料")}
+      </nav>
+      <div class="content-area">${tabContent}</div>
+    </div>
 
     ${renderBrowseModal()}
     ${renderImportModal()}
