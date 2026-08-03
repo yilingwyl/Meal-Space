@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>今日厨房</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: #EFF6E9;
+    color: #233420;
+    min-height: 100vh;
+  }
+  button, input, select, textarea { font-family: inherit; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #C7D9B8; border-radius: 4px; }
+
+  .app-page { max-width: 1000px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .seal-icon { width: 42px; height: 42px; border-radius: 10px; background: #B23A2E; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+  .title { font-family: 'Noto Serif SC', serif; font-size: 22px; font-weight: 700; margin: 0; letter-spacing: 1px; }
+  .subtitle { font-size: 12.5px; color: #5D7A4C; margin: 2px 0 0; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-dark { display: flex; align-items: center; gap: 6px; background: #233420; color: #EFF6E9; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  .btn-ghost { display: flex; align-items: center; gap: 6px; background: #E6F0DE; color: #3E5233; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+
+  .day-tab-bar { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px; }
+  .day-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 52px; padding: 8px 4px; border-radius: 10px; border: 1px solid #D8E6CE; background: #fff; cursor: pointer; position: relative; color: #3E5233; }
+  .day-tab:hover { background: #E6F0DE; }
+  .day-tab.active { background: #233420; color: #EFF6E9; border-color: #233420; }
+  .day-tab.weekend { border-color: #D9A67E; }
+  .day-tab .wk { font-size: 11px; opacity: .75; }
+  .day-tab .dnum { font-size: 14px; font-weight: 700; }
+  .today-dot { position: absolute; top: 4px; right: 6px; width: 5px; height: 5px; border-radius: 50%; background: #B23A2E; }
+
+  .section { margin-bottom: 30px; }
+  .section-title { font-family: 'Noto Serif SC', serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; border-left: 4px solid #B23A2E; padding-left: 10px; }
+  .hint { font-family: 'Noto Sans SC', sans-serif; font-weight: 400; font-size: 11.5px; color: #8CA477; }
+
+  .meal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .meal-card { background: #fff; border: 1px solid #D8E6CE; border-radius: 14px; padding: 16px; box-shadow: 0 2px 6px rgba(30,45,26,0.04); }
+  .meal-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .meal-label { font-family: 'Noto Serif SC', serif; font-weight: 700; font-size: 14px; color: #5D7A4C; letter-spacing: 1px; }
+
+  .status-row { display: flex; gap: 5px; margin-bottom: 10px; }
+  .status-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 3px; background: #E6F0DE; border: none; border-radius: 7px; padding: 6px 4px; font-size: 11px; cursor: pointer; color: #3E5233; }
+  .status-btn.active { background: #233420; color: #EFF6E9; }
+  .staple-hint { font-size: 11.5px; color: #8CA477; margin: 0 0 8px; }
+
+  .dish-stack { display: flex; flex-direction: column; gap: 10px; }
+  .dish-block { background: #F5FAF0; border: 1px solid #E6F0DE; border-radius: 10px; padding: 10px; }
+  .dish-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px; }
+  .role-tag { font-size: 10px; color: #5D7A4C; background: #E6F0DE; padding: 2px 6px; border-radius: 8px; white-space: nowrap; }
+  .recipe-name { font-size: 15px; font-weight: 700; margin: 0; }
+  .ing-list { margin: 0 0 6px; padding: 0; list-style: none; }
+  .ing-item { font-size: 12px; color: #3E5233; padding: 1px 0; }
+  .recipe-note { font-size: 11.5px; color: #8CA477; font-style: italic; margin: 0 0 6px; }
+  .time-tag { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #B23A2E; margin: 0 0 8px; }
+  .card-actions { display: flex; gap: 8px; }
+  .btn-soft { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; background: #E6F0DE; border: none; border-radius: 8px; padding: 7px 8px; font-size: 12px; cursor: pointer; color: #3E5233; }
+  .btn-cook { flex: 1.3; display: flex; align-items: center; justify-content: center; gap: 5px; background: #4F7358; color: #fff; border: none; border-radius: 8px; padding: 7px 8px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .btn-cook:active, .btn-dark:active { transform: scale(0.97); }
+  .regen-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn-regen { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; background: none; border: 1px dashed #C7D9B8; border-radius: 8px; padding: 6px; font-size: 11.5px; cursor: pointer; color: #5D7A4C; }
+
+  .cafeteria-box { text-align: center; padding: 16px 0 6px; }
+  .cafeteria-text { font-size: 15px; font-weight: 700; margin: 6px 0 2px; }
+  .cafeteria-sub { font-size: 11.5px; color: #8CA477; margin: 0; }
+  .empty-text { font-size: 12.5px; color: #8CA477; padding: 16px 0; text-align: center; }
+
+  .inv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .inv-card { background: #fff; border: 1px solid #D8E6CE; border-radius: 14px; padding: 12px 14px; }
+  .inv-card-header { display: flex; justify-content: space-between; align-items: center; font-family: 'Noto Serif SC', serif; font-weight: 700; font-size: 14px; color: #233420; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #E6F0DE; }
+  .add-btn { background: #E6F0DE; border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #5D7A4C; font-size: 14px; line-height: 1; }
+  .item-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; border-radius: 6px; font-size: 13px; gap: 8px; }
+  .item-row:hover { background: #E6F0DE; }
+  .item-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .item-avatar { width: 28px; height: 28px; border-radius: 8px; background: #E6F0DE; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .item-name { color: #2E3D26; cursor: pointer; border-bottom: 1px dashed #C7D9B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rename-input { border: 1px solid #4F7358; border-radius: 6px; padding: 3px 6px; font-size: 13px; width: 110px; outline: none; }
+  .qty-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .qty-btn { background: #E6F0DE; border: none; border-radius: 5px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #3E5233; font-size: 13px; line-height: 1; }
+  .qty-text { font-size: 12px; min-width: 52px; text-align: center; color: #3E5233; }
+  .add-form { display: flex; gap: 5px; margin-top: 8px; align-items: center; }
+  .add-input { border: 1px solid #D8E6CE; border-radius: 6px; padding: 5px 7px; font-size: 12px; flex: 1; min-width: 0; }
+  .confirm-add-btn { background: #4F7358; border: none; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; flex-shrink: 0; }
+
+  .condiment-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .condiment-tag { background: #E6F0DE; color: #3E5233; font-size: 12px; padding: 5px 10px; border-radius: 20px; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(30,45,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  .modal { background: #EFF6E9; border-radius: 16px; width: 100%; max-width: 560px; max-height: 85vh; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
+  .modal-title { font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 700; margin: 0; }
+  .icon-btn { background: none; border: none; cursor: pointer; color: #3E5233; font-size: 18px; line-height: 1; padding: 2px; }
+  .search-input { border: 1px solid #D8E6CE; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; outline: none; width: 100%; flex-shrink: 0; }
+  .recipe-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .recipe-row { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #D8E6CE; border-radius: 10px; padding: 10px 12px; }
+  .recipe-row.selected { border-color: #4F7358; background: #F2F7F2; }
+  .recipe-row-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .recipe-row-name { font-size: 13.5px; font-weight: 700; }
+  .avail-badge { font-size: 10px; color: #fff; padding: 2px 7px; border-radius: 10px; }
+  .recipe-row-ing { font-size: 11.5px; color: #5D7A4C; margin: 3px 0 0; }
+  .btn-cook-small { background: #233420; color: #fff; border: none; border-radius: 7px; padding: 6px 12px; font-size: 12px; flex-shrink: 0; cursor: pointer; }
+
+  .import-hint { font-size: 12.5px; color: #5D7A4C; margin: 0 0 10px; }
+  .textarea { width: 100%; border: 1px solid #D8E6CE; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; resize: vertical; margin-bottom: 10px; outline: none; }
+  .upload-box { display: flex; align-items: center; gap: 8px; border: 1px dashed #C7D9B8; border-radius: 8px; padding: 10px 12px; cursor: pointer; margin-bottom: 10px; }
+  .error-text { font-size: 12px; color: #B23A2E; margin: 0 0 10px; }
+  .btn-parse { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; background: #B23A2E; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 13.5px; cursor: pointer; font-weight: 500; }
+  .btn-parse:disabled { opacity: .6; cursor: not-allowed; }
+  .form-label { font-size: 12px; color: #5D7A4C; font-weight: 700; display: block; margin: 10px 0 5px; }
+  .form-input { width: 100%; border: 1px solid #D8E6CE; border-radius: 8px; padding: 8px 10px; font-size: 14px; outline: none; }
+  .meal-toggle { background: #E6F0DE; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; color: #3E5233; }
+  .meal-toggle.active { background: #233420; color: #EFF6E9; }
+  .draft-ing-row { display: flex; gap: 5px; align-items: center; margin-bottom: 6px; }
+  .matched-tag { font-size: 10.5px; color: #4F7358; background: #E4EEE4; padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
+  .category-select { border: 1px solid #D8E6CE; border-radius: 6px; font-size: 11.5px; padding: 4px 2px; }
+  .add-ing-btn { display: flex; align-items: center; gap: 4px; background: none; border: 1px dashed #C7D9B8; border-radius: 8px; padding: 6px 10px; font-size: 12px; color: #5D7A4C; cursor: pointer; margin-bottom: 10px; }
+  .ing-picker-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; max-height: 140px; overflow-y: auto; }
+  .ing-chip { background: #E6F0DE; border: 1px solid transparent; border-radius: 20px; padding: 5px 12px; font-size: 12px; color: #3E5233; cursor: pointer; }
+  .ing-chip.active { background: #4F7358; color: #fff; }
+  .api-key-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; background: #E6F0DE; border-radius: 8px; padding: 8px 10px; }
+  .api-key-row input { border: 1px solid #D8E6CE; border-radius: 6px; padding: 6px 8px; font-size: 12px; outline: none; }
+  .api-key-note { font-size: 10.5px; color: #5D7A4C; margin: 0; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #233420; color: #EFF6E9; padding: 10px 18px; border-radius: 24px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 100; }
+
+  .scroll-body { overflow-y: auto; }
+
+  @media (max-width: 480px) {
+    .app-page { padding: 14px 10px 48px; }
+    .title { font-size: 18px; }
+    .header { gap: 10px; }
+    .modal { padding: 14px; max-height: 90vh; }
+    .meal-card { padding: 12px; }
+    .day-tab { min-width: 42px; padding: 6px 2px; }
+    .inv-card { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="app" class="app-page">加载中…</div>
+
+<script>
+/* ============================== 基础数据 ============================== */
+
+const INITIAL_INVENTORY = {
+  "蔬菜": [
+    { id: "bell_pepper", name: "大彩椒", qty: 6, unit: "个" },
+    { id: "radish", name: "萝卜", qty: 2, unit: "根" },
+    { id: "yellow_onion", name: "黄洋葱", qty: 6, unit: "个" },
+    { id: "hupi_pepper", name: "虎皮青椒", qty: 5, unit: "个" },
+    { id: "luosi_pepper", name: "螺丝椒", qty: 5, unit: "个" },
+    { id: "lettuce", name: "生菜", qty: 2, unit: "包" },
+    { id: "baby_cabbage", name: "娃娃菜", qty: 2, unit: "棵" },
+    { id: "egg", name: "鸡蛋", qty: 15, unit: "个" },
+    { id: "tofu", name: "豆腐", qty: 2, unit: "盒" },
+    { id: "king_oyster", name: "杏鲍菇", qty: 1, unit: "盒" },
+    { id: "seafood_mushroom", name: "海鲜菇", qty: 2, unit: "包" },
+    { id: "guacamole", name: "guacamole", qty: 10, unit: "小盒" },
+    { id: "kimchi", name: "泡菜", qty: 1, unit: "小盒" },
+    { id: "frozen_corn", name: "冷冻玉米粒", qty: 250, unit: "g" },
+    { id: "frozen_peas", name: "冷冻小青豆", qty: 250, unit: "g" }
+  ],
+  "肉类": [
+    { id: "pork_rib", name: "排骨粒", qty: 2, unit: "lbs" },
+    { id: "ground_pork", name: "猪肉末", qty: 1, unit: "lbs" },
+    { id: "shrimp", name: "大虾", qty: 16, unit: "个" },
+    { id: "pork_belly", name: "五花肉", qty: 2, unit: "小包" },
+    { id: "chicken_thigh", name: "无骨无皮鸡腿肉", qty: 20, unit: "块" },
+    { id: "beef_slice", name: "肥牛片", qty: 72, unit: "片" },
+    { id: "beef_bone", name: "牛背骨", qty: 6, unit: "根" },
+    { id: "steak", name: "牛排肉", qty: 5, unit: "片" },
+    { id: "beef_brisket", name: "牛腩肉", qty: 1, unit: "小包" }
+  ],
+  "点心": [
+    { id: "wonton", name: "冷冻馄饨", qty: 12, unit: "个" },
+    { id: "babaofan", name: "八宝饭", qty: 2, unit: "个" },
+    { id: "hand_cake", name: "手抓饼", qty: 3, unit: "片" },
+    { id: "shaomai", name: "烧麦", qty: 10, unit: "个" },
+    { id: "veggie_bun", name: "菜包", qty: 3, unit: "个" },
+    { id: "bread", name: "面包", qty: 0, unit: "片" },
+    { id: "peanut_butter", name: "花生酱", qty: 0, unit: "小罐" },
+    { id: "cereal", name: "麦片", qty: 0, unit: "盒" },
+    { id: "milk", name: "牛奶", qty: 0, unit: "盒" },
+    { id: "small_cake", name: "小蛋糕", qty: 0, unit: "个" }
+  ]
+};
+
+const CONDIMENTS = [
+  "garlic plus","大蒜","葱","红葱头","生姜","盐","糖","淀粉","料酒","生抽","老抽","蚝油",
+  "菜籽油","橄榄油","猪油","甜面酱","豆瓣酱","蕃茄酱","黑胡椒","胡椒粉","麻油","醋","白芝麻",
+  "parmesan","金枪鱼罐头","烤肉酱","烧烤料","豆豉"
+];
+
+// role: staple(点心/早餐) / veg(素菜) / protein(荤菜蛋白质) / multi(荤素兼具)
+const RECIPES = [
+  { id: "r1", name: "手抓饼卷蛋", meals: ["breakfast"], role: "staple", time: 8, ingredients: [{ id: "hand_cake", qty: 1 }, { id: "egg", qty: 1 }], note: "煎饼卷蛋，加甜面酱更香" },
+  { id: "r2", name: "煮冷冻馄饨", meals: ["breakfast", "dinner"], role: "staple", time: 10, ingredients: [{ id: "wonton", qty: 6 }], note: "配麻油醋碟" },
+  { id: "r3", name: "蒸烧麦", meals: ["breakfast"], role: "staple", time: 12, ingredients: [{ id: "shaomai", qty: 5 }], note: "蒸锅上汽后蒸10分钟" },
+  { id: "r4", name: "蒸菜包", meals: ["breakfast"], role: "staple", time: 12, ingredients: [{ id: "veggie_bun", qty: 1 }], note: "" },
+  { id: "r5", name: "八宝饭", meals: ["breakfast"], role: "staple", time: 10, ingredients: [{ id: "babaofan", qty: 1 }], note: "隔水蒸热即可" },
+  { id: "r6", name: "洋葱炒蛋", meals: ["breakfast", "dinner"], role: "veg", time: 10, ingredients: [{ id: "yellow_onion", qty: 1 }, { id: "egg", qty: 2 }], note: "" },
+  { id: "r7", name: "虎皮青椒炒蛋", meals: ["breakfast", "dinner"], role: "veg", time: 10, ingredients: [{ id: "hupi_pepper", qty: 2 }, { id: "egg", qty: 2 }], note: "" },
+  { id: "r8", name: "尖椒肉丝", meals: ["lunch", "dinner"], role: "protein", time: 15, ingredients: [{ id: "luosi_pepper", qty: 2 }, { id: "ground_pork", qty: 0.3 }], note: "猪肉末代替肉丝，更快手" },
+  { id: "r9", name: "彩椒炒鸡丁", meals: ["lunch", "dinner"], role: "protein", time: 15, ingredients: [{ id: "bell_pepper", qty: 2 }, { id: "chicken_thigh", qty: 2 }], note: "" },
+  { id: "r10", name: "蚝油生菜", meals: ["lunch", "dinner"], role: "veg", time: 6, ingredients: [{ id: "lettuce", qty: 0.5 }], note: "焯水后淋蚝油蒜末" },
+  { id: "r11", name: "麻婆豆腐", meals: ["lunch", "dinner"], role: "protein", time: 15, ingredients: [{ id: "tofu", qty: 1 }, { id: "ground_pork", qty: 0.3 }], note: "豆瓣酱+花椒粉" },
+  { id: "r12", name: "家常豆腐", meals: ["lunch", "dinner"], role: "protein", time: 15, ingredients: [{ id: "tofu", qty: 1 }, { id: "hupi_pepper", qty: 2 }], note: "" },
+  { id: "r13", name: "蒜蓉大虾", meals: ["lunch", "dinner"], role: "protein", time: 12, ingredients: [{ id: "shrimp", qty: 8 }], note: "" },
+  { id: "r14", name: "白灼虾", meals: ["lunch", "dinner"], role: "protein", time: 8, ingredients: [{ id: "shrimp", qty: 8 }], note: "最快手的虾做法" },
+  { id: "r15", name: "泡菜炒五花肉", meals: ["lunch", "dinner"], role: "multi", time: 15, ingredients: [{ id: "pork_belly", qty: 1 }, { id: "kimchi", qty: 1 }], note: "" },
+  { id: "r16", name: "红烧排骨", meals: ["dinner"], role: "protein", time: 35, ingredients: [{ id: "pork_rib", qty: 1 }], note: "老抽+糖+料酒" },
+  { id: "r17", name: "糖醋排骨", meals: ["dinner"], role: "protein", time: 35, ingredients: [{ id: "pork_rib", qty: 1 }], note: "" },
+  { id: "r18", name: "排骨萝卜汤", meals: ["lunch", "dinner"], role: "multi", time: 30, ingredients: [{ id: "pork_rib", qty: 0.5 }, { id: "radish", qty: 1 }], note: "" },
+  { id: "r19", name: "牛腩炖萝卜", meals: ["dinner"], role: "multi", time: 45, ingredients: [{ id: "beef_brisket", qty: 1 }, { id: "radish", qty: 1 }], note: "周末炖锅菜" },
+  { id: "r20", name: "黑椒牛排", meals: ["lunch", "dinner"], role: "protein", time: 10, ingredients: [{ id: "steak", qty: 1 }], note: "煎3分钟每面，黑胡椒调味" },
+  { id: "r21", name: "肥牛炒时蔬", meals: ["lunch", "dinner"], role: "multi", time: 12, ingredients: [{ id: "beef_slice", qty: 16 }, { id: "bell_pepper", qty: 2 }, { id: "yellow_onion", qty: 1 }], note: "" },
+  { id: "r22", name: "肥牛卷海鲜菇", meals: ["lunch", "dinner"], role: "multi", time: 12, ingredients: [{ id: "beef_slice", qty: 16 }, { id: "seafood_mushroom", qty: 1 }], note: "" },
+  { id: "r23", name: "照烧鸡腿", meals: ["lunch", "dinner"], role: "protein", time: 15, ingredients: [{ id: "chicken_thigh", qty: 2 }], note: "生抽+糖+料酒收汁" },
+  { id: "r24", name: "黑椒鸡腿杂蔬", meals: ["lunch", "dinner"], role: "multi", time: 15, ingredients: [{ id: "chicken_thigh", qty: 2 }, { id: "bell_pepper", qty: 1 }, { id: "luosi_pepper", qty: 1 }], note: "" },
+  { id: "r25", name: "杏鲍菇炒肉片", meals: ["lunch", "dinner"], role: "multi", time: 12, ingredients: [{ id: "king_oyster", qty: 1 }, { id: "ground_pork", qty: 0.3 }], note: "" },
+  { id: "r26", name: "海鲜菇炒蛋", meals: ["breakfast", "lunch", "dinner"], role: "veg", time: 10, ingredients: [{ id: "seafood_mushroom", qty: 1 }, { id: "egg", qty: 2 }], note: "" },
+  { id: "r27", name: "娃娃菜炖杏鲍菇", meals: ["lunch", "dinner"], role: "veg", time: 15, ingredients: [{ id: "baby_cabbage", qty: 1 }, { id: "king_oyster", qty: 0.5 }], note: "" },
+  { id: "r28", name: "洋葱炒肥牛", meals: ["lunch", "dinner"], role: "multi", time: 10, ingredients: [{ id: "yellow_onion", qty: 1 }, { id: "beef_slice", qty: 16 }], note: "" },
+  { id: "r29", name: "玉米青豆炒蛋", meals: ["breakfast", "lunch"], role: "veg", time: 10, ingredients: [{ id: "frozen_corn", qty: 100 }, { id: "frozen_peas", qty: 100 }, { id: "egg", qty: 2 }], note: "" },
+  { id: "r30", name: "蒜蓉蒸虾", meals: ["lunch", "dinner"], role: "protein", time: 12, ingredients: [{ id: "shrimp", qty: 8 }], note: "" },
+  { id: "r31", name: "泡菜豆腐汤", meals: ["lunch", "dinner"], role: "multi", time: 15, ingredients: [{ id: "kimchi", qty: 1 }, { id: "tofu", qty: 1 }], note: "" },
+  { id: "r32", name: "蒜香排骨粒", meals: ["lunch", "dinner"], role: "protein", time: 25, ingredients: [{ id: "pork_rib", qty: 1 }], note: "" },
+  { id: "r33", name: "金枪鱼生菜沙拉", meals: ["lunch"], role: "multi", time: 5, ingredients: [{ id: "tuna_can", qty: 1 }, { id: "lettuce", qty: 0.5 }], note: "免开火" },
+  { id: "r34", name: "牛背骨萝卜汤", meals: ["dinner"], role: "multi", time: 60, ingredients: [{ id: "beef_bone", qty: 2 }, { id: "radish", qty: 1 }], note: "慢炖，适合周末" },
+  { id: "r35", name: "黑椒牛肋骨（背骨煎烤）", meals: ["dinner"], role: "protein", time: 20, ingredients: [{ id: "beef_bone", qty: 1 }], note: "" },
+  { id: "r36", name: "花生酱三明治", meals: ["breakfast"], role: "staple", time: 3, ingredients: [{ id: "bread", qty: 2 }, { id: "peanut_butter", qty: 1 }], note: "免开火" },
+  { id: "r37", name: "麦片牛奶", meals: ["breakfast"], role: "staple", time: 2, ingredients: [{ id: "cereal", qty: 1 }, { id: "milk", qty: 1 }], note: "免开火，倒一起就好" },
+  { id: "r38", name: "小蛋糕", meals: ["breakfast"], role: "staple", time: 1, ingredients: [{ id: "small_cake", qty: 1 }], note: "免开火" }
+];
+
+const MEAL_META = {
+  breakfast: { label: "早餐", icon: "🌅" },
+  lunch: { label: "午餐", icon: "☀️" },
+  dinner: { label: "晚餐", icon: "🌙" }
+};
+const MEAL_ORDER = ["breakfast", "lunch", "dinner"];
+const STATUS_META = {
+  recommend: { label: "在家做", icon: "👨‍🍳" },
+  eatout: { label: "外食/食堂", icon: "🏢" },
+  skip: { label: "跳过", icon: "⏭️" }
+};
+const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const ROLE_LABELS = { protein: "荤菜/蛋白质", veg: "素菜", multi: "荤素兼具", staple: "主食/点心" };
+
+const ITEM_EMOJI = {
+  bell_pepper: "🫑", radish: "🥕", yellow_onion: "🧅", hupi_pepper: "🫑", luosi_pepper: "🌶️",
+  lettuce: "🥬", baby_cabbage: "🥬", egg: "🥚", tofu: "🧊", king_oyster: "🍄", seafood_mushroom: "🍄",
+  guacamole: "🥑", kimchi: "🫙", frozen_corn: "🌽", frozen_peas: "🫛",
+  pork_rib: "🍖", ground_pork: "🥩", shrimp: "🦐", pork_belly: "🥓", chicken_thigh: "🍗",
+  beef_slice: "🥩", beef_bone: "🦴", steak: "🥩", beef_brisket: "🍲",
+  wonton: "🥟", babaofan: "🍚", hand_cake: "🫓", shaomai: "🥟", veggie_bun: "🥟",
+  bread: "🍞", peanut_butter: "🥜", cereal: "🥣", milk: "🥛", small_cake: "🧁"
+};
+function itemEmoji(id) { return ITEM_EMOJI[id] || "🍽️"; }
+
+/* ============================== 状态 ============================== */
+
+const state = {
+  inventory: null,
+  customRecipes: [],
+  weekPlan: null,
+  weekKey: "",
+  weekDates: [],
+  todayIdx: 0,
+  selectedDay: 0,
+  toastMsg: null,
+  toastTimer: null,
+
+  browseOpen: false,
+  browseFilter: "",
+
+  addingTo: null,
+  newItem: { name: "", qty: "", unit: "" },
+
+  editingItem: null, // {cat, id}
+  editingValue: "",
+
+  importOpen: false,
+  importText: "",
+  importImage: null, // {base64, mediaType, name}
+  parsing: false,
+  parseError: "",
+  draftRecipe: null,
+  apiKey: "",
+
+  mealPicker: null, // {day, meal}
+  pickerTab: "existing",
+  pickerSearch: "",
+  manualName: "",
+  manualRole: "protein",
+  manualIngredients: [], // [{id, qty}]
+  manualIngPicker: ""
+};
+
+/* ============================== 工具函数 ============================== */
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function fmtQty(q) {
+  return Number.isInteger(q) ? q : Math.round(q * 10) / 10;
+}
+function findItem(id) {
+  for (const cat in state.inventory) {
+    const it = state.inventory[cat].find((i) => i.id === id);
+    if (it) return { ...it, cat };
+  }
+  return null;
+}
+function allRecipes() {
+  return RECIPES.concat(state.customRecipes);
+}
+function findRecipe(id) {
+  return allRecipes().find((r) => r.id === id);
+}
+function canMake(recipe) {
+  return recipe.ingredients.every((ing) => {
+    const stock = findItem(ing.id);
+    return stock && stock.qty >= ing.qty;
+  });
+}
+function pickDistinct(pool, n) {
+  const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n).map((r) => r.id);
+}
+function getWeekDates() {
+  const now = new Date();
+  const dow = now.getDay();
+  const diffToMonday = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+function dateKey(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+function generateDishes(meal, excludeIds) {
+  excludeIds = excludeIds || [];
+  const recipes = allRecipes();
+  const eligible = (role) => recipes.filter((r) => r.meals.includes(meal) && canMake(r) && !excludeIds.includes(r.id) && (!role || r.role === role));
+  if (meal === "breakfast") {
+    const staplePool = eligible("staple");
+    const fullPool = eligible();
+    const pool = staplePool.length && Math.random() < 0.75 ? staplePool : fullPool;
+    return pool.length ? [pickDistinct(pool, 1)[0]] : [];
+  }
+  const proteinPool = eligible("protein").concat(eligible("multi"));
+  const vegPool = eligible("veg");
+  if (proteinPool.length && vegPool.length) {
+    return [pickDistinct(proteinPool, 1)[0], pickDistinct(vegPool, 1)[0]];
+  }
+  if (proteinPool.length) return pickDistinct(proteinPool, Math.min(2, proteinPool.length));
+  if (vegPool.length) return pickDistinct(vegPool, Math.min(2, vegPool.length));
+  return [];
+}
+function replacementFor(meal, currentId, comboIds) {
+  const recipes = allRecipes();
+  const cur = findRecipe(currentId);
+  const sameRoleSet = !cur ? ["protein", "multi"] : cur.role === "veg" ? ["veg"] : cur.role === "staple" ? ["staple"] : ["protein", "multi"];
+  let pool = recipes.filter((r) => r.meals.includes(meal) && canMake(r) && !comboIds.includes(r.id) && sameRoleSet.includes(r.role));
+  if (!pool.length) pool = recipes.filter((r) => r.meals.includes(meal) && canMake(r) && !comboIds.includes(r.id));
+  if (!pool.length) return null;
+  return pickDistinct(pool, 1)[0];
+}
+function emptyDayPlan(isWeekend) {
+  return {
+    breakfast: { status: "recommend", dishIds: [] },
+    lunch: { status: isWeekend ? "recommend" : "eatout", dishIds: [] },
+    dinner: { status: "recommend", dishIds: [] }
+  };
+}
+
+/* ============================== 持久化 (localStorage) ============================== */
+
+function persistInventory() {
+  try { localStorage.setItem("kitchen-inventory", JSON.stringify(state.inventory)); } catch (e) {}
+}
+function persistCustomRecipes() {
+  try { localStorage.setItem("custom-recipes", JSON.stringify(state.customRecipes)); } catch (e) {}
+}
+function persistWeekPlan() {
+  try { localStorage.setItem("week-plan", JSON.stringify({ key: state.weekKey, plan: state.weekPlan })); } catch (e) {}
+}
+function persistApiKey() {
+  try { localStorage.setItem("anthropic-api-key", state.apiKey || ""); } catch (e) {}
+}
+
+function loadAll() {
+  try {
+    const inv = localStorage.getItem("kitchen-inventory");
+    state.inventory = inv ? JSON.parse(inv) : JSON.parse(JSON.stringify(INITIAL_INVENTORY));
+  } catch (e) { state.inventory = JSON.parse(JSON.stringify(INITIAL_INVENTORY)); }
+
+  try {
+    const cr = localStorage.getItem("custom-recipes");
+    state.customRecipes = cr ? JSON.parse(cr) : [];
+  } catch (e) { state.customRecipes = []; }
+
+  try {
+    state.apiKey = localStorage.getItem("anthropic-api-key") || "";
+  } catch (e) { state.apiKey = ""; }
+
+  state.weekDates = getWeekDates();
+  state.weekKey = dateKey(state.weekDates[0]);
+  const todayStr = dateKey(new Date());
+  let idx = state.weekDates.findIndex((d) => dateKey(d) === todayStr);
+  state.todayIdx = idx >= 0 ? idx : 0;
+  state.selectedDay = state.todayIdx;
+
+  let plan = null;
+  try {
+    const wp = localStorage.getItem("week-plan");
+    if (wp) {
+      const parsed = JSON.parse(wp);
+      if (parsed.key === state.weekKey) plan = parsed.plan;
+    }
+  } catch (e) {}
+  if (!plan) {
+    plan = state.weekDates.map((d) => emptyDayPlan([0, 6].includes(d.getDay())));
+  }
+  plan = plan.map((day) => {
+    const next = Object.assign({}, day);
+    MEAL_ORDER.forEach((meal) => {
+      const slot = next[meal];
+      if (slot.status === "recommend" && slot.dishIds.length === 0) {
+        next[meal] = { status: "recommend", dishIds: generateDishes(meal) };
+      }
+    });
+    return next;
+  });
+  state.weekPlan = plan;
+  persistWeekPlan();
+}
+
+/* ============================== 业务逻辑 ============================== */
+
+function showToast(msg) {
+  state.toastMsg = msg;
+  render();
+  if (state.toastTimer) clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(() => { state.toastMsg = null; render(); }, 2200);
+}
+
+function setMealStatus(dayIdx, meal, status) {
+  const day = state.weekPlan[dayIdx];
+  const slot = day[meal];
+  const dishIds = status === "recommend" && slot.dishIds.length === 0 ? generateDishes(meal) : slot.dishIds;
+  day[meal] = { status: status, dishIds: status === "recommend" ? dishIds : [] };
+  persistWeekPlan();
+  render();
+}
+function shuffleWholeMeal(dayIdx, meal) {
+  const day = state.weekPlan[dayIdx];
+  day[meal] = Object.assign({}, day[meal], { dishIds: generateDishes(meal) });
+  persistWeekPlan();
+  render();
+}
+function shuffleDish(dayIdx, meal, dishId) {
+  const day = state.weekPlan[dayIdx];
+  const combo = day[meal].dishIds;
+  const replacement = replacementFor(meal, dishId, combo);
+  if (!replacement) { showToast("库存不足，没有可换的菜了"); return; }
+  day[meal].dishIds = combo.map((id) => (id === dishId ? replacement : id));
+  persistWeekPlan();
+  render();
+}
+function cookRecipe(recipeId) {
+  const recipe = findRecipe(recipeId);
+  if (!recipe) return;
+  if (!canMake(recipe)) { showToast("食材不够啦，先补充库存吧"); return; }
+  recipe.ingredients.forEach((ing) => {
+    const found = findItem(ing.id);
+    if (!found) return;
+    const arr = state.inventory[found.cat];
+    const item = arr.find((i) => i.id === ing.id);
+    item.qty = Math.max(0, Math.round((item.qty - ing.qty) * 100) / 100);
+  });
+  persistInventory();
+  showToast(`已记录：${recipe.name} 🥢`);
+  render();
+}
+function adjustQty(cat, id, delta) {
+  const item = state.inventory[cat].find((i) => i.id === id);
+  if (item) item.qty = Math.max(0, Math.round((item.qty + delta) * 100) / 100);
+  persistInventory();
+  render();
+}
+function toggleAddForm(cat) {
+  state.addingTo = state.addingTo === cat ? null : cat;
+  state.newItem = { name: "", qty: "", unit: "" };
+  render();
+}
+function confirmAddItem(cat) {
+  if (!state.newItem.name.trim()) return;
+  const id = "custom_" + Date.now();
+  state.inventory[cat].push({ id: id, name: state.newItem.name.trim(), qty: Number(state.newItem.qty) || 0, unit: state.newItem.unit.trim() || "个" });
+  persistInventory();
+  state.addingTo = null;
+  state.newItem = { name: "", qty: "", unit: "" };
+  render();
+}
+function startRename(cat, id) {
+  const item = state.inventory[cat].find((i) => i.id === id);
+  state.editingItem = { cat: cat, id: id };
+  state.editingValue = item ? item.name : "";
+  render();
+  const input = document.getElementById("rename-input");
+  if (input) { input.focus(); input.select(); }
+}
+function saveRename(cat, id, value) {
+  const trimmed = (value != null ? value : state.editingValue).trim();
+  state.editingItem = null;
+  if (!trimmed) { render(); return; }
+  const item = state.inventory[cat].find((i) => i.id === id);
+  if (item) item.name = trimmed;
+  persistInventory();
+  render();
+}
+
+function openMealPicker(dayIdx, meal) {
+  state.mealPicker = { day: dayIdx, meal: meal };
+  state.pickerTab = "existing";
+  state.pickerSearch = "";
+  state.manualName = "";
+  state.manualRole = meal === "breakfast" ? "staple" : "protein";
+  state.manualIngredients = [];
+  state.manualIngPicker = "";
+  render();
+}
+function closeMealPicker() {
+  state.mealPicker = null;
+  render();
+}
+function setPickerTab(tab) {
+  state.pickerTab = tab;
+  render();
+}
+function toggleExistingInSlot(recipeId) {
+  if (!state.mealPicker) return;
+  const { day, meal } = state.mealPicker;
+  const cap = meal === "breakfast" ? 1 : 2;
+  const slot = state.weekPlan[day][meal];
+  let nextIds;
+  if (slot.dishIds.includes(recipeId)) nextIds = slot.dishIds.filter((id) => id !== recipeId);
+  else if (slot.dishIds.length < cap) nextIds = slot.dishIds.concat([recipeId]);
+  else nextIds = slot.dishIds.slice(1).concat([recipeId]);
+  state.weekPlan[day][meal] = { status: "recommend", dishIds: nextIds };
+  persistWeekPlan();
+  render();
+}
+function toggleManualIngredient(itemId) {
+  const idx = state.manualIngredients.findIndex((i) => i.id === itemId);
+  if (idx >= 0) state.manualIngredients.splice(idx, 1);
+  else state.manualIngredients.push({ id: itemId, qty: 1 });
+  render();
+}
+function updateManualIngQty(itemId, qty) {
+  const ing = state.manualIngredients.find((i) => i.id === itemId);
+  if (ing) ing.qty = qty;
+}
+function saveManualDish() {
+  if (!state.manualName.trim() || !state.manualIngredients.length || !state.mealPicker) {
+    showToast("请填写菜名并选择至少一种食材");
+    return;
+  }
+  const { day, meal } = state.mealPicker;
+  const newRecipe = {
+    id: "custom_r_" + Date.now(),
+    name: state.manualName.trim(),
+    meals: [meal],
+    role: state.manualRole,
+    time: 10,
+    note: "",
+    ingredients: state.manualIngredients.map((i) => ({ id: i.id, qty: Number(i.qty) || 0 })),
+    isCustom: true
+  };
+  state.customRecipes.push(newRecipe);
+  persistCustomRecipes();
+  const cap = meal === "breakfast" ? 1 : 2;
+  const slot = state.weekPlan[day][meal];
+  const nextIds = slot.dishIds.length < cap ? slot.dishIds.concat([newRecipe.id]) : slot.dishIds.slice(1).concat([newRecipe.id]);
+  state.weekPlan[day][meal] = { status: "recommend", dishIds: nextIds };
+  persistWeekPlan();
+  showToast("已添加到这一餐 ✓");
+  state.manualName = "";
+  state.manualIngredients = [];
+  render();
+}
+
+function openImport() {
+  state.importOpen = true;
+  state.importText = "";
+  state.importImage = null;
+  state.parsing = false;
+  state.parseError = "";
+  state.draftRecipe = null;
+  render();
+}
+function closeImport() {
+  state.importOpen = false;
+  state.draftRecipe = null;
+  render();
+}
+function handleImageUpload(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    const base64 = dataUrl.split(",")[1];
+    state.importImage = { base64: base64, mediaType: file.type || "image/jpeg", name: file.name };
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+function findMatchByName(name) {
+  for (const cat in state.inventory) {
+    const hit = state.inventory[cat].find((i) => i.name === name || i.name.includes(name) || name.includes(i.name));
+    if (hit) return Object.assign({}, hit, { cat: cat });
+  }
+  return null;
+}
+async function parseImport() {
+  if (!state.importText.trim() && !state.importImage) {
+    state.parseError = "请粘贴文字，或上传一张截图";
+    render();
+    return;
+  }
+  if (!state.apiKey.trim()) {
+    state.parseError = "请先在上方填写你的 Anthropic API Key 才能使用 AI 解析（仅保存在本地浏览器）";
+    render();
+    return;
+  }
+  state.parsing = true;
+  state.parseError = "";
+  render();
+  try {
+    const instruction = `请把下面这份菜谱（可能来自小红书笔记的文字或截图）整理成结构化 JSON，只输出 JSON 本身，不要 markdown 代码块，不要任何多余文字、不要解释。
+JSON 格式：
+{"name": "菜名", "meals": ["lunch","dinner"], "role": "protein 或 veg 或 multi 或 staple", "time": 15, "note": "一句话小贴士，没有就空字符串", "ingredients": [{"name": "食材名", "qty": 2, "unit": "个"}]}
+要求：
+- meals 从 breakfast/lunch/dinner 中选，按这道菜适合的场景选1-3个
+- role: 素菜选 veg；以肉/蛋白质为主选 protein；一道菜里荤素都有选 multi；早餐点心类选 staple
+- ingredients 按家庭一次做饭的自然份量估算数量和单位（如"鸡蛋":2,"个"；"生抽":1,"汤匙"），调料可以省略不列
+- time 是大概分钟数`;
+    const content = [];
+    if (state.importImage) {
+      content.push({ type: "image", source: { type: "base64", media_type: state.importImage.mediaType, data: state.importImage.base64 } });
+    }
+    content.push({ type: "text", text: state.importText.trim() ? `${instruction}\n\n菜谱内容：\n${state.importText.trim()}` : instruction });
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": state.apiKey.trim(),
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-5",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: content }]
+      })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message || "API 出错");
+    const textBlock = (data.content || []).find((b) => b.type === "text");
+    if (!textBlock) throw new Error("解析无结果");
+    const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    const ingredientDrafts = (parsed.ingredients || []).map((ing) => {
+      const matched = findMatchByName(ing.name);
+      return {
+        rawName: ing.name,
+        qty: ing.qty != null ? ing.qty : 1,
+        unit: ing.unit || "个",
+        matchedId: matched ? matched.id : null,
+        newCategory: "蔬菜",
+        currentStock: 0
+      };
+    });
+
+    state.draftRecipe = {
+      name: parsed.name || "未命名菜谱",
+      meals: (parsed.meals || ["dinner"]).filter((m) => MEAL_ORDER.includes(m)),
+      role: ["veg", "protein", "multi", "staple"].includes(parsed.role) ? parsed.role : "multi",
+      time: Number(parsed.time) || 15,
+      note: parsed.note || "",
+      ingredients: ingredientDrafts
+    };
+  } catch (err) {
+    state.parseError = "解析失败（" + (err && err.message ? err.message : "未知错误") + "），可以重试，或者直接手动填写下面的表单";
+    state.draftRecipe = { name: "", meals: ["dinner"], role: "multi", time: 15, note: "", ingredients: [] };
+  } finally {
+    state.parsing = false;
+    render();
+  }
+}
+function draftToggleMeal(m) {
+  const meals = state.draftRecipe.meals;
+  const idx = meals.indexOf(m);
+  if (idx >= 0) meals.splice(idx, 1); else meals.push(m);
+  render();
+}
+function draftSetRole(role) {
+  state.draftRecipe.role = role;
+  render();
+}
+function updateDraftIngredient(idx, patch) {
+  Object.assign(state.draftRecipe.ingredients[idx], patch);
+}
+function removeDraftIngredient(idx) {
+  state.draftRecipe.ingredients.splice(idx, 1);
+  render();
+}
+function addDraftIngredient() {
+  state.draftRecipe.ingredients.push({ rawName: "", qty: 1, unit: "个", matchedId: null, newCategory: "蔬菜", currentStock: 0 });
+  render();
+}
+function saveDraftRecipe() {
+  const draft = state.draftRecipe;
+  if (!draft.name.trim() || !draft.ingredients.length) { showToast("请填写菜名和至少一种食材"); return; }
+  const finalIngredients = [];
+  draft.ingredients.forEach((ing) => {
+    if (ing.matchedId) {
+      finalIngredients.push({ id: ing.matchedId, qty: Number(ing.qty) || 0 });
+    } else if (ing.rawName.trim()) {
+      const id = "custom_" + ing.rawName.trim() + "_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+      finalIngredients.push({ id: id, qty: Number(ing.qty) || 0 });
+      state.inventory[ing.newCategory].push({ id: id, name: ing.rawName.trim(), qty: Number(ing.currentStock) || 0, unit: ing.unit || "个" });
+    }
+  });
+  persistInventory();
+  const newRecipe = {
+    id: "custom_r_" + Date.now(),
+    name: draft.name.trim(),
+    meals: draft.meals.length ? draft.meals : ["dinner"],
+    role: draft.role,
+    time: draft.time,
+    note: draft.note,
+    ingredients: finalIngredients,
+    isCustom: true
+  };
+  state.customRecipes.push(newRecipe);
+  persistCustomRecipes();
+  showToast("菜谱已保存 ✓");
+  state.importOpen = false;
+  state.importText = "";
+  state.importImage = null;
+  state.draftRecipe = null;
+  state.parseError = "";
+  render();
+}
+
+/* ============================== 渲染 ============================== */
+
+function ingredientLine(ing) {
+  const it = findItem(ing.id);
+  const name = it ? it.name : ing.id;
+  const unit = it ? it.unit : "";
+  return `${esc(name)} × ${fmtQty(ing.qty)}${esc(unit)}`;
+}
+
+function renderMealCard(dayIdx, meal) {
+  const meta = MEAL_META[meal];
+  const day = state.weekPlan[dayIdx];
+  const slot = day[meal];
+  const dishes = slot.dishIds.map((id) => findRecipe(id)).filter(Boolean);
+
+  let statusButtons = Object.keys(STATUS_META).map((key) => {
+    const m = STATUS_META[key];
+    const active = slot.status === key ? "active" : "";
+    return `<button class="status-btn ${active}" onclick="setMealStatus(${dayIdx}, '${meal}', '${key}')">${m.icon} ${m.label}</button>`;
+  }).join("");
+
+  let body = "";
+  if (slot.status === "eatout") {
+    body = `<div class="cafeteria-box">
+      <div style="font-size:24px;">🏢</div>
+      <p class="cafeteria-text">外食 / 食堂</p>
+      <p class="cafeteria-sub">不消耗家里食材</p>
+    </div>`;
+  } else if (slot.status === "skip") {
+    body = `<div class="cafeteria-box">
+      <div style="font-size:24px;">🚫</div>
+      <p class="cafeteria-text">跳过不吃</p>
+    </div>`;
+  } else {
+    const staple = meal !== "breakfast" ? `<p class="staple-hint">🍚 主食：米饭 / 馄饨等，按需自备</p>` : "";
+    let dishesHtml = "";
+    if (dishes.length) {
+      dishesHtml = `<div class="dish-stack">` + dishes.map((recipe) => `
+        <div class="dish-block">
+          <div class="dish-top-row">
+            <span class="recipe-name">${esc(recipe.name)}</span>
+            <span class="role-tag">${ROLE_LABELS[recipe.role] || recipe.role}</span>
+          </div>
+          <ul class="ing-list">${recipe.ingredients.map((ing) => `<li class="ing-item">${ingredientLine(ing)}</li>`).join("")}</ul>
+          ${recipe.note ? `<p class="recipe-note">${esc(recipe.note)}</p>` : ""}
+          <p class="time-tag">🔥 约 ${recipe.time} 分钟</p>
+          <div class="card-actions">
+            <button class="btn-soft" onclick="shuffleDish(${dayIdx}, '${meal}', '${recipe.id}')">🔄 换一个</button>
+            <button class="btn-cook" onclick="cookRecipe('${recipe.id}')">✓ 做了</button>
+          </div>
+        </div>
+      `).join("") + `</div>`;
+    } else {
+      dishesHtml = `<p class="empty-text">库存不足，暂无推荐 — 去补充食材吧</p>`;
+    }
+    const regenBtn = dishes.length ? `<button class="btn-regen" onclick="shuffleWholeMeal(${dayIdx}, '${meal}')">🔄 整组换一换</button>` : "";
+    body = `${staple}${dishesHtml}<div class="regen-row">${regenBtn}<button class="btn-regen" onclick="openMealPicker(${dayIdx}, '${meal}')">➕ 自己选</button></div>`;
+  }
+
+  return `<div class="meal-card">
+    <div class="meal-card-header"><span>${meta.icon}</span><span class="meal-label">${meta.label}</span></div>
+    <div class="status-row">${statusButtons}</div>
+    ${body}
+  </div>`;
+}
+
+function renderInventory() {
+  return Object.keys(state.inventory).map((cat) => {
+    const items = state.inventory[cat];
+    const rows = items.map((item) => {
+      const isEditing = state.editingItem && state.editingItem.cat === cat && state.editingItem.id === item.id;
+      const nameHtml = isEditing
+        ? `<input id="rename-input" class="rename-input" value="${esc(state.editingValue)}"
+             oninput="state.editingValue=this.value"
+             onkeydown="if(event.key==='Enter'){saveRename('${cat}','${item.id}', this.value);} if(event.key==='Escape'){state.editingItem=null; render();}"
+             onblur="saveRename('${cat}','${item.id}', this.value)">`
+        : `<span class="item-name" onclick="startRename('${cat}','${item.id}')">${esc(item.name)}</span>`;
+      return `<div class="item-row" style="opacity:${item.qty <= 0 ? 0.4 : 1}">
+        <div class="item-left">
+          <span class="item-avatar">${itemEmoji(item.id)}</span>
+          ${nameHtml}
+        </div>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',-1)">−</button>
+          <span class="qty-text">${fmtQty(item.qty)} ${esc(item.unit)}</span>
+          <button class="qty-btn" onclick="adjustQty('${cat}','${item.id}',1)">+</button>
+        </div>
+      </div>`;
+    }).join("");
+    const addForm = state.addingTo === cat ? `
+      <div class="add-form">
+        <input class="add-input" placeholder="名称" value="${esc(state.newItem.name)}" oninput="state.newItem.name=this.value">
+        <input class="add-input" style="width:50px" placeholder="量" value="${esc(state.newItem.qty)}" oninput="state.newItem.qty=this.value">
+        <input class="add-input" style="width:50px" placeholder="单位" value="${esc(state.newItem.unit)}" oninput="state.newItem.unit=this.value">
+        <button class="confirm-add-btn" onclick="confirmAddItem('${cat}')">✓</button>
+      </div>` : "";
+    return `<div class="inv-card">
+      <div class="inv-card-header"><span>${esc(cat)}</span><button class="add-btn" onclick="toggleAddForm('${cat}')">+</button></div>
+      ${rows}
+      ${addForm}
+    </div>`;
+  }).join("");
+}
+
+function renderBrowseModalInner() {
+  const filter = state.browseFilter;
+  const list = allRecipes().filter((r) => r.name.includes(filter));
+  return list.map((r) => {
+    const available = canMake(r);
+    return `<div class="recipe-row">
+      <div style="flex:1">
+        <div class="recipe-row-top">
+          <span class="recipe-row-name">${esc(r.name)}</span>
+          <span class="avail-badge" style="background:${available ? '#4F7358' : '#A3AC8E'}">${available ? '可做' : '缺货'}</span>
+          ${r.isCustom ? `<span class="avail-badge" style="background:#5D7A4C">自定义</span>` : ""}
+        </div>
+        <p class="recipe-row-ing">${r.ingredients.map(ingredientLine).join(" · ")}</p>
+      </div>
+      <button class="btn-cook-small" style="opacity:${available ? 1 : .4};cursor:${available ? 'pointer' : 'not-allowed'}" ${available ? `onclick="cookRecipe('${r.id}')"` : "disabled"}>做了</button>
+    </div>`;
+  }).join("");
+}
+
+function renderBrowseModal() {
+  if (!state.browseOpen) return "";
+  return `<div class="modal-overlay" onclick="if(event.target===this){state.browseOpen=false; render();}">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h3 class="modal-title">全部菜谱</h3><button class="icon-btn" onclick="state.browseOpen=false; render();">✕</button></div>
+      <input class="search-input" placeholder="搜索菜名…" value="${esc(state.browseFilter)}" id="browse-search-input">
+      <div class="recipe-list scroll-body" id="browse-list">${renderBrowseModalInner()}</div>
+    </div>
+  </div>`;
+}
+
+function renderPickerExistingInner() {
+  if (!state.mealPicker) return "";
+  const { day, meal } = state.mealPicker;
+  const search = state.pickerSearch;
+  const list = allRecipes().filter((r) => r.meals.includes(meal) && r.name.includes(search));
+  const selectedIds = state.weekPlan[day][meal].dishIds;
+  return list.map((r) => {
+    const available = canMake(r);
+    const selected = selectedIds.includes(r.id);
+    return `<div class="recipe-row ${selected ? 'selected' : ''}">
+      <div style="flex:1">
+        <div class="recipe-row-top">
+          <span class="recipe-row-name">${esc(r.name)}</span>
+          <span class="avail-badge" style="background:${available ? '#4F7358' : '#A3AC8E'}">${available ? '可做' : '缺货'}</span>
+        </div>
+        <p class="recipe-row-ing">${r.ingredients.map(ingredientLine).join(" · ")}</p>
+      </div>
+      <button class="btn-cook-small" onclick="toggleExistingInSlot('${r.id}')">${selected ? '移除' : '选它'}</button>
+    </div>`;
+  }).join("");
+}
+
+function renderIngPickerInner() {
+  const filter = state.manualIngPicker;
+  let html = "";
+  Object.keys(state.inventory).forEach((cat) => {
+    state.inventory[cat].filter((i) => i.name.includes(filter)).forEach((item) => {
+      const picked = state.manualIngredients.some((m) => m.id === item.id);
+      html += `<button class="ing-chip ${picked ? 'active' : ''}" onclick="toggleManualIngredient('${item.id}')">${esc(item.name)}</button>`;
+    });
+  });
+  return html;
+}
+
+function renderMealPickerModal() {
+  if (!state.mealPicker) return "";
+  const { day, meal } = state.mealPicker;
+  const tabExisting = state.pickerTab === "existing";
+
+  let manualBody = "";
+  if (!tabExisting) {
+    const qtyRows = state.manualIngredients.map((ing) => {
+      const it = findItem(ing.id);
+      return `<div class="draft-ing-row">
+        <span style="flex:1;font-size:12.5px">${esc(it ? it.name : ing.id)}</span>
+        <input class="add-input" style="width:60px" value="${esc(ing.qty)}" oninput="updateManualIngQty('${ing.id}', this.value)">
+        <span style="font-size:11.5px;color:#8CA477">${esc(it ? it.unit : "")}</span>
+      </div>`;
+    }).join("");
+    manualBody = `
+      <div class="scroll-body">
+        <label class="form-label">菜名</label>
+        <input class="form-input" placeholder="给这道菜起个名字" value="${esc(state.manualName)}" oninput="state.manualName=this.value">
+        <label class="form-label">分类</label>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          ${["protein", "veg", "multi", "staple"].map((role) => `<button class="meal-toggle ${state.manualRole === role ? 'active' : ''}" onclick="state.manualRole='${role}'; render();">${ROLE_LABELS[role]}</button>`).join("")}
+        </div>
+        <label class="form-label">从食材库选食材</label>
+        <input class="search-input" id="manual-ing-search" placeholder="搜索食材…" value="${esc(state.manualIngPicker)}">
+        <div class="ing-picker-grid" id="manual-ing-grid">${renderIngPickerInner()}</div>
+        ${state.manualIngredients.length ? `<label class="form-label">用量</label>${qtyRows}` : ""}
+        <div class="card-actions" style="margin-top:12px">
+          <button class="btn-cook" onclick="saveManualDish()">✓ 添加到这一餐</button>
+        </div>
+      </div>`;
+  }
+
+  return `<div class="modal-overlay" onclick="if(event.target===this){closeMealPicker();}">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h3 class="modal-title">${MEAL_META[meal].label} · 自己选</h3><button class="icon-btn" onclick="closeMealPicker()">✕</button></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0">
+        <button class="meal-toggle ${tabExisting ? 'active' : ''}" style="flex:1" onclick="setPickerTab('existing')">从菜谱库选</button>
+        <button class="meal-toggle ${!tabExisting ? 'active' : ''}" style="flex:1" onclick="setPickerTab('manual')">自己拼一个菜</button>
+      </div>
+      ${tabExisting ? `
+        <input class="search-input" id="picker-search-input" placeholder="搜索菜名…" value="${esc(state.pickerSearch)}">
+        <div class="recipe-list scroll-body" id="picker-list">${renderPickerExistingInner()}</div>
+      ` : manualBody}
+    </div>
+  </div>`;
+}
+
+function renderImportModal() {
+  if (!state.importOpen) return "";
+  const draft = state.draftRecipe;
+  let inner;
+  if (!draft) {
+    inner = `
+      <div class="api-key-row">
+        <label class="form-label" style="margin:0">Anthropic API Key</label>
+        <input type="password" id="api-key-input" placeholder="sk-ant-…" value="${esc(state.apiKey)}" oninput="state.apiKey=this.value" onblur="persistApiKey()">
+        <p class="api-key-note">AI 解析需要你自己的 Anthropic API Key，仅保存在本机浏览器，不会上传到别处。不填也可以用下面"自己拼一个菜"手动创建菜谱。</p>
+      </div>
+      <p class="import-hint">把小红书笔记里的文字粘贴进来，或者上传一张笔记截图，AI 会帮你整理成菜谱。</p>
+      <textarea class="textarea" rows="5" placeholder="粘贴菜名 / 食材 / 做法文字…" oninput="state.importText=this.value">${esc(state.importText)}</textarea>
+      <label class="upload-box">
+        <span>🖼️</span>
+        <span style="font-size:12.5px;color:#5D7A4C">${state.importImage ? esc(state.importImage.name) : "上传截图（可选）"}</span>
+        <input type="file" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+      </label>
+      ${state.parseError ? `<p class="error-text">${esc(state.parseError)}</p>` : ""}
+      <button class="btn-parse" onclick="parseImport()" ${state.parsing ? "disabled" : ""}>✨ ${state.parsing ? "解析中…" : "AI 解析"}</button>
+    `;
+  } else {
+    const ingRows = draft.ingredients.map((ing, idx) => `
+      <div class="draft-ing-row">
+        <input class="add-input" style="flex:1.4" placeholder="食材名" value="${esc(ing.rawName)}" oninput="updateDraftIngredient(${idx}, {rawName:this.value, matchedId:null})">
+        <input class="add-input" style="width:46px" value="${esc(ing.qty)}" oninput="updateDraftIngredient(${idx}, {qty:this.value})">
+        <input class="add-input" style="width:46px" value="${esc(ing.unit)}" oninput="updateDraftIngredient(${idx}, {unit:this.value})">
+        ${ing.matchedId ? `<span class="matched-tag">已匹配库存</span>` : `
+          <select class="category-select" onchange="updateDraftIngredient(${idx}, {newCategory:this.value})">
+            <option value="蔬菜" ${ing.newCategory === '蔬菜' ? 'selected' : ''}>蔬菜</option>
+            <option value="肉类" ${ing.newCategory === '肉类' ? 'selected' : ''}>肉类</option>
+            <option value="点心" ${ing.newCategory === '点心' ? 'selected' : ''}>点心</option>
+          </select>
+          <input class="add-input" style="width:44px" placeholder="现有量" value="${esc(ing.currentStock)}" oninput="updateDraftIngredient(${idx}, {currentStock:this.value})">
+        `}
+        <button class="icon-btn" onclick="removeDraftIngredient(${idx})">🗑️</button>
+      </div>`).join("");
+    inner = `
+      <div class="scroll-body">
+        <label class="form-label">菜名</label>
+        <input class="form-input" value="${esc(draft.name)}" oninput="state.draftRecipe.name=this.value">
+        <label class="form-label">适合的餐次</label>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          ${MEAL_ORDER.map((m) => `<button class="meal-toggle ${draft.meals.includes(m) ? 'active' : ''}" onclick="draftToggleMeal('${m}')">${MEAL_META[m].label}</button>`).join("")}
+        </div>
+        <label class="form-label">分类</label>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          ${["protein", "veg", "multi", "staple"].map((role) => `<button class="meal-toggle ${draft.role === role ? 'active' : ''}" onclick="draftSetRole('${role}')">${ROLE_LABELS[role]}</button>`).join("")}
+        </div>
+        <label class="form-label">食材</label>
+        ${ingRows}
+        <button class="add-ing-btn" onclick="addDraftIngredient()">＋ 加一种食材</button>
+        <div class="card-actions">
+          <button class="btn-soft" onclick="state.draftRecipe=null; render();">返回</button>
+          <button class="btn-cook" onclick="saveDraftRecipe()">✓ 保存菜谱</button>
+        </div>
+      </div>`;
+  }
+
+  return `<div class="modal-overlay" onclick="if(event.target===this){closeImport();}">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h3 class="modal-title">导入菜谱</h3><button class="icon-btn" onclick="closeImport()">✕</button></div>
+      ${inner}
+    </div>
+  </div>`;
+}
+
+function render() {
+  const day = state.weekPlan[state.selectedDay];
+  const dayDate = state.weekDates[state.selectedDay];
+  const isWeekendDay = [0, 6].includes(dayDate.getDay());
+  const dateLabel = dayDate.toLocaleDateString("zh-CN", { month: "long", day: "numeric" });
+
+  const dayTabs = state.weekDates.map((d, i) => {
+    const wk = [0, 6].includes(d.getDay());
+    const active = i === state.selectedDay;
+    const isToday = i === state.todayIdx;
+    return `<button class="day-tab ${active ? 'active' : ''} ${wk ? 'weekend' : ''}" onclick="state.selectedDay=${i}; render();">
+      <span class="wk">${WEEKDAY_LABELS[i]}</span><span class="dnum">${d.getDate()}</span>${isToday ? '<span class="today-dot"></span>' : ''}
+    </button>`;
+  }).join("");
+
+  const mealCards = MEAL_ORDER.map((meal) => renderMealCard(state.selectedDay, meal)).join("");
+
+  const html = `
+    <header class="header">
+      <div class="header-left">
+        <div class="seal-icon">🍳</div>
+        <div>
+          <h1 class="title">今日厨房</h1>
+          <p class="subtitle">${dateLabel} · ${WEEKDAY_LABELS[state.selectedDay]}${isWeekendDay ? '（周末）' : ''}</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-ghost" onclick="openImport()">⬆️ 导入菜谱</button>
+        <button class="btn-dark" onclick="state.browseOpen=true; render();">🔍 全部菜谱</button>
+      </div>
+    </header>
+
+    <div class="day-tab-bar">${dayTabs}</div>
+
+    <section class="section">
+      <div class="meal-grid">${mealCards}</div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">食材库存</h2>
+      <div class="inv-grid">${renderInventory()}</div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">常备调料 <span class="hint">（默认充足，不计数）</span></h2>
+      <div class="condiment-wrap">${CONDIMENTS.map((c) => `<span class="condiment-tag">${esc(c)}</span>`).join("")}</div>
+    </section>
+
+    ${renderBrowseModal()}
+    ${renderImportModal()}
+    ${renderMealPickerModal()}
+
+    ${state.toastMsg ? `<div class="toast">${esc(state.toastMsg)}</div>` : ""}
+  `;
+
+  document.getElementById("app").innerHTML = html;
+  attachLiveSearchHandlers();
+}
+
+function attachLiveSearchHandlers() {
+  const browseInput = document.getElementById("browse-search-input");
+  if (browseInput) {
+    browseInput.addEventListener("input", (e) => {
+      state.browseFilter = e.target.value;
+      const list = document.getElementById("browse-list");
+      if (list) list.innerHTML = renderBrowseModalInner();
+    });
+  }
+  const pickerInput = document.getElementById("picker-search-input");
+  if (pickerInput) {
+    pickerInput.addEventListener("input", (e) => {
+      state.pickerSearch = e.target.value;
+      const list = document.getElementById("picker-list");
+      if (list) list.innerHTML = renderPickerExistingInner();
+    });
+  }
+  const ingInput = document.getElementById("manual-ing-search");
+  if (ingInput) {
+    ingInput.addEventListener("input", (e) => {
+      state.manualIngPicker = e.target.value;
+      const grid = document.getElementById("manual-ing-grid");
+      if (grid) grid.innerHTML = renderIngPickerInner();
+    });
+  }
+}
+
+/* ============================== 初始化 ============================== */
+
+loadAll();
+render();
+</script>
+</body>
+</html>
